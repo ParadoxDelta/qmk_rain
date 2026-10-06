@@ -1,0 +1,26 @@
+name: Build Keychron Firmware
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install QMK
+        run: |
+          python3 -m pip install qmk
+
+      - name: Compile Firmware
+        run: |
+          qmk compile -kb keychron/k2_he/ansi/rgb -km default
+
+      - name: Upload Firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: keychron_k2_he_firmware
+          path: "*.bin"
