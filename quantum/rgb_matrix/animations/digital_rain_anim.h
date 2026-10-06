@@ -9,8 +9,6 @@ bool DIGITAL_RAIN(effect_params_t* params) {
     RGB_MATRIX_USE_LIMITS(led_min, led_max);
 
     // Dynamische Berechnung der Ein-/Ausblenddauer basierend auf dem Speed-Regler
-    // Bei niedriger Geschwindigkeit: ~1000ms Fade-In / 1000ms Fade-Out
-    // Bei hoher Geschwindigkeit:    ~250ms Fade-In / 250ms Fade-Out
     uint16_t base_fade_ms = 1000 - scale16by8(rgb_matrix_config.speed, 750);
     uint16_t attack_ms    = base_fade_ms; // Dynamisches Aufleuchten
     uint16_t decay_ms     = base_fade_ms; // Dynamisches Abklingen (exakt symmetrisch)
@@ -77,4 +75,19 @@ bool DIGITAL_RAIN(effect_params_t* params) {
             // Helligkeit an die globale RGB-Matrix-Helligkeit anpassen
             val = scale8(val, rgb_matrix_config.hsv.v);
 
-            // Nutzt die
+            // Nutzt die im Keychron Launcher / per FN gewählte Wunschfarbe & Sättigung
+            hsv_t hsv = {
+                .h = rgb_matrix_config.hsv.h,
+                .s = rgb_matrix_config.hsv.s,
+                .v = val
+            };
+            rgb_t rgb = rgb_matrix_hsv_to_rgb(hsv);
+            rgb_matrix_set_color(i, rgb.r, rgb.g, rgb.b);
+        }
+    }
+
+    return rgb_matrix_check_finished_leds(led_max);
+}
+
+#    endif // RGB_MATRIX_CUSTOM_EFFECT_IMPLS
+#endif     // ENABLE_RGB_MATRIX_DIGITAL_RAIN
