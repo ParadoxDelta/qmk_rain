@@ -1,3 +1,5 @@
+C
+
 #ifdef ENABLE_RGB_MATRIX_DIGITAL_RAIN
 RGB_MATRIX_EFFECT(DIGITAL_RAIN)
 #    ifdef RGB_MATRIX_CUSTOM_EFFECT_IMPLS
@@ -24,23 +26,35 @@ bool DIGITAL_RAIN(effect_params_t* params) {
     // 2. Erzeugen der Regentropfen von OBEN nach UNTEN
     if (params->iter == 0) {
         uint8_t speed_factor = scale8(rgb_matrix_config.speed, 15) + 5;
-        uint8_t current_y    = (g_rgb_timer / (64 - speed_factor)) % 7;
+        
+        // Bestimme minimale und maximale Y-Koordinate der Tastatur-Matrix
+        uint8_t min_y = 255;
+        uint8_t max_y = 0;
+        for (uint8_t i = led_min; i < led_max; i++) {
+            if (g_led_config.point[i].y < min_y) min_y = g_led_config.point[i].y;
+            if (g_led_config.point[i].y > max_y) max_y = g_led_config.point[i].y;
+        }
+
+        uint8_t y_range = (max_y - min_y) > 0 ? (max_y - min_y) : 1;
 
         for (uint8_t i = led_min; i < led_max; i++) {
             if (!HAS_ANY_FLAGS(g_led_config.flags[i], params->flags)) continue;
 
-            // Korrektur: .point statt .pt
-            uint8_t row = g_led_config.point[i].y / 38;
+            // Normiere die Y-Koordinate relativ zur Tastaturhöhe auf 0..5 (6 Reihen)
+            uint8_t row = ((uint16_t)(g_led_config.point[i].y - min_y) * 6) / y_range;
+
+            // Aktuelle Y-Position der Tropfenwelle
+            uint8_t current_y = (g_rgb_timer / (64 - speed_factor)) % 6;
 
             if (row == current_y) {
-                if ((random8() < 40) && (g_digital_rain_spawn_time[i] == 0)) {
+                if ((random8() < 50) && (g_digital_rain_spawn_time[i] == 0)) {
                     g_digital_rain_spawn_time[i] = g_rgb_timer;
                 }
             }
         }
     }
 
-    // 3. Render-Schleife: Symmetrische, dynamische Helligkeitskurve & Wunschfarbe
+    // 3. Render-Schleife: Symmetrische Helligkeitskurve mit gewählter HSV-Farbe
     for (uint8_t i = led_min; i < led_max; i++) {
         if (!HAS_ANY_FLAGS(g_led_config.flags[i], params->flags)) continue;
 
@@ -64,13 +78,10 @@ bool DIGITAL_RAIN(effect_params_t* params) {
                 val = 255 - ((decay_elapsed * 255) / decay_ms);
             }
 
-            val = scale8(val, rgb_matrix_config.hsv.v);
+            // Nutze die im Launcher gewählte Farbe und skaliere die Helligkeit
+            hsv_t hsv = rgb_matrix_config.hsv;
+            hsv.v     = scale8(val, rgb_matrix_config.hsv.v);
 
-            hsv_t hsv = {
-                .h = rgb_matrix_config.hsv.h,
-                .s = rgb_matrix_config.hsv.s,
-                .v = val
-            };
             rgb_t rgb = rgb_matrix_hsv_to_rgb(hsv);
             rgb_matrix_set_color(i, rgb.r, rgb.g, rgb.b);
         }
